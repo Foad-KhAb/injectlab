@@ -76,6 +76,7 @@ uv run injectlab show-trace results/<trace>.json
 ```bash
 uv run pytest                  # all tests
 uv run pytest -m "not ollama"  # skip tests that need a running Ollama server
+uv run python scripts/smoke_ollama.py  # check the local model can make a tool call
 uv run ruff check .            # lint
 uv run ruff format .           # format
 ```
