@@ -25,15 +25,33 @@ class OllamaClient:
         num_ctx: int = 8192,
         host: str = DEFAULT_HOST,
         timeout: float = 300.0,
+        empty_retries: int = 2,
     ) -> None:
         self.model = model
         self.temperature = temperature
         self.seed = seed
         self.num_ctx = num_ctx
         self.host = host
+        self.max_empty_retries = empty_retries
+        self.empty_retries_used = 0
         self._client = ollama.Client(host=host, timeout=timeout)
 
     def chat(self, messages: list[Message], tools: list[ToolSpec]) -> AssistantTurn:
+        """One model turn.
+
+        Ollama occasionally returns a completely empty turn (no text, no tool calls) when its
+        tool-call parser drops a malformed call. An empty turn is never a valid answer, so it
+        is retried; ``empty_retries_used`` counts how often that happened.
+        """
+        turn = self._chat_once(messages, tools)
+        for _ in range(self.max_empty_retries):
+            if turn.content.strip() or turn.tool_calls:
+                break
+            self.empty_retries_used += 1
+            turn = self._chat_once(messages, tools)
+        return turn
+
+    def _chat_once(self, messages: list[Message], tools: list[ToolSpec]) -> AssistantTurn:
         try:
             response = self._client.chat(
                 model=self.model,

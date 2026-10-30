@@ -12,18 +12,23 @@ GET_TIME = ToolSpec(name="get_time", description="Current time.")
 
 
 class FakeOllama:
-    """Stands in for ollama.Client: records the request, returns or raises what we set."""
+    """Stands in for ollama.Client: records the request, returns or raises what we set.
+
+    ``response`` may be a list, in which case successive calls return successive items.
+    """
 
     def __init__(self, response: Any = None, error: Exception | None = None) -> None:
-        self.response = response
+        self.responses = response if isinstance(response, list) else [response]
         self.error = error
         self.kwargs: dict[str, Any] = {}
+        self.num_calls = 0
 
     def chat(self, **kwargs: Any) -> Any:
         self.kwargs = kwargs
+        self.num_calls += 1
         if self.error:
             raise self.error
-        return self.response
+        return self.responses[min(self.num_calls, len(self.responses)) - 1]
 
 
 def make_response(content: str = "", calls: list[tuple[str, Any]] | None = None) -> Any:
@@ -69,6 +74,29 @@ def test_no_tools_sends_none() -> None:
     fake = FakeOllama(make_response("ok"))
     client_with(fake).chat([Message.user("u")], [])
     assert fake.kwargs["tools"] is None
+
+
+def test_empty_turn_is_retried() -> None:
+    fake = FakeOllama([make_response(""), make_response(calls=[("get_time", {})])])
+    client = client_with(fake)
+    turn = client.chat([Message.user("u")], [GET_TIME])
+    assert [c.name for c in turn.tool_calls] == ["get_time"]
+    assert fake.num_calls == 2
+    assert client.empty_retries_used == 1
+
+
+def test_persistently_empty_turn_gives_up() -> None:
+    fake = FakeOllama(make_response("  "))
+    client = client_with(fake, empty_retries=2)
+    turn = client.chat([Message.user("u")], [GET_TIME])
+    assert turn.is_final and turn.content.strip() == ""
+    assert fake.num_calls == 3
+
+
+def test_non_empty_turn_is_not_retried() -> None:
+    fake = FakeOllama(make_response("hello"))
+    client_with(fake).chat([Message.user("u")], [GET_TIME])
+    assert fake.num_calls == 1
 
 
 def test_connection_error_has_clear_message() -> None:
