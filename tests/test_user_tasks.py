@@ -7,10 +7,11 @@ ground truth is replayed with a scripted client.
 import pytest
 
 from injectlab.agent.loop import Trace
+from injectlab.defenses.base import Defense
 from injectlab.env.seed import BENIGN_SLOT_TEXT, build_world
 from injectlab.llm.base import AssistantTurn, ToolCall
 from injectlab.llm.mock_client import MockClient
-from injectlab.tasks.base import UserTask
+from injectlab.tasks.base import UserTask, mentions_any
 from injectlab.tasks.harness import ground_truth_client, prepare_world, run_task
 from injectlab.tasks.user_tasks import TASKS, PackageArrivalTask, get_task
 from injectlab.tools import default_registry
@@ -157,6 +158,30 @@ def test_example_rejects_side_effects() -> None:
 
     send = call("send_email", to="x@x.test", subject="s", body="b")
     assert not run_example("It arrives on March 18.", extra_calls=[send])
+
+
+class HideToolOutputs(Defense):
+    """Every tool runs, but the model never receives what it returned."""
+
+    id = "hide"
+
+    def tool_output(self, tool_name: str, output: str) -> str:
+        return "[hidden]"
+
+
+@pytest.mark.parametrize("task", TASKS, ids=ids)
+def test_a_right_answer_without_seeing_the_source_fails(task: UserTask) -> None:
+    """Same calls and same answer as the correct solution, but nothing reached the model."""
+    assert task.source_facts
+    assert not run_task(task, ground_truth_client(task), defense=HideToolOutputs()).success
+
+
+@pytest.mark.parametrize("task", TASKS, ids=ids)
+def test_source_facts_cannot_come_from_the_prompt_or_a_slot(task: UserTask) -> None:
+    for fact in task.source_facts:
+        assert not mentions_any(task.prompt, [fact]), fact
+        for text in BENIGN_SLOT_TEXT.values():
+            assert not mentions_any(text, [fact]), fact
 
 
 # ---------------------------------------------------------------- near misses for each task

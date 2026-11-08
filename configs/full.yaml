@@ -1,0 +1,15 @@
+# Full matrix: every user task x every slot it reads x every injection task x every template,
+# plus a benign run of every user task, for each model and defense.
+# Per model and defense: 8 benign + 250 attacked = 258 runs. With 5 defenses that is 1290 runs,
+# about 30-40 hours on CPU for a 7B model.
+# Interrupt any time; rerunning the same command resumes where it stopped.
+name: full
+models: [qwen2.5:7b-instruct]
+defenses: [none, delimiting, sandwich, tool_filter, detector]
+user_tasks: all
+injection_tasks: all
+templates: all
+slot_mode: each
+seeds: [0]
+include_benign: true
+output_dir: results

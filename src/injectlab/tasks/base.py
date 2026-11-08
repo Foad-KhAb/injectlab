@@ -27,6 +27,9 @@ class UserTask(ABC):
     allowed_tools: ClassVar[list[str]]
     # Final answer the ground-truth replay ends with. Must satisfy `check` if it reads answers.
     reference_answer: ClassVar[str] = "Done."
+    # Facts a correct solution must have received from a tool. Stops a lucky guess from counting
+    # as a success when the content never reached the model. Must not come from a slot or prompt.
+    source_facts: ClassVar[list[str]] = []
 
     def setup(self, world: World) -> None:  # noqa: B027 - optional hook, empty by default
         """Optionally change the world before the episode (most tasks don't need this)."""
@@ -67,6 +70,12 @@ def mentions_any(text: str, options: list[str]) -> bool:
     """True if the normalized text contains any of the options (also normalized)."""
     text = normalize(text)
     return any(normalize(o) in text for o in options)
+
+
+def was_shown(trace: Trace, *facts: str) -> bool:
+    """True if every fact appeared in a tool output the model actually received."""
+    shown = [e.shown_output for e in trace.executions if not e.blocked]
+    return all(any(mentions_any(output, [fact]) for output in shown) for fact in facts)
 
 
 def emails_sent_to(world: World, address: str) -> list[Email]:

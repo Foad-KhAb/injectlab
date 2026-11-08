@@ -1,0 +1,12 @@
+# Tiny end-to-end check: 1 model, 2 short user tasks, 1 attack.
+# 4 runs per defense, about 4 minutes each on CPU.
+name: dev
+models: [qwen2.5:7b-instruct]
+defenses: [none, delimiting, sandwich, tool_filter, detector]
+user_tasks: [package_arrival, vendor_demo]
+injection_tasks: [forward_bank_code]
+templates: [important_message]
+slot_mode: each
+seeds: [0]
+include_benign: true
+output_dir: results

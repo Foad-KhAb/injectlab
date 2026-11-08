@@ -1,4 +1,4 @@
-"""Placeholder tests: the package imports and the CLI is wired up."""
+"""The package imports and the CLI is wired up."""
 
 from typer.testing import CliRunner
 
@@ -17,9 +17,3 @@ def test_cli_help_lists_commands() -> None:
     assert result.exit_code == 0
     for command in ("run", "analyze", "show-trace"):
         assert command in result.output
-
-
-def test_unimplemented_command_exits_nonzero() -> None:
-    result = runner.invoke(app, ["analyze", "results/none.jsonl"])
-    assert result.exit_code == 1
-    assert "Not implemented yet" in result.output

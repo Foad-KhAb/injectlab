@@ -35,6 +35,8 @@ uv sync
 uv sync --extra detector
 ```
 
+A later plain `uv sync` removes the optional dependencies again, so keep `--extra detector`.
+
 ## Local models with Ollama
 
 Install Ollama from <https://ollama.com/download>. The official installer needs sudo:
@@ -70,7 +72,7 @@ uv run injectlab --help
 uv run python scripts/run_episode.py "Summarize my unread emails."  # one real-model episode
 uv run python scripts/baseline_utility.py                          # all user tasks, no attack
 uv run python scripts/attack_episode.py package_arrival forward_bank_code important_message
-uv run injectlab run configs/dev.yaml
+uv run injectlab run configs/dev.yaml    # small end-to-end experiment; rerun to resume
 uv run injectlab analyze results/<run>.jsonl
 uv run injectlab show-trace results/<trace>.json
 ```
