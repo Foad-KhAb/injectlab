@@ -78,7 +78,11 @@ def git_commit() -> str:
 def load_rows(path: Path) -> list[ResultRow]:
     if not path.exists():
         return []
-    return [ResultRow.model_validate_json(line) for line in path.read_text().splitlines() if line]
+    return [
+        ResultRow.model_validate_json(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line
+    ]
 
 
 def completed_run_ids(path: Path) -> set[str]:
@@ -183,7 +187,7 @@ def run_experiment(
     commit = git_commit()
 
     new_rows: list[ResultRow] = []
-    with config.results_path.open("a") as out:
+    with config.results_path.open("a", encoding="utf-8") as out:
         for i, spec in enumerate(specs, start=1):
             if spec.run_id in done:
                 if on_row:

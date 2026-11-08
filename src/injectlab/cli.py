@@ -75,6 +75,8 @@ def analyze(results: Annotated[Path, typer.Argument(help="Path to a results JSON
         "Benign utility by user task", metrics.utility_breakdown(df, ["model", "user_task"])
     )
     _print_frame("Detector", metrics.detector_summary(df))
+    _print_frame("Each defense vs none (paired)", metrics.compare_defenses(df))
+    _print_frame("English vs Persian (paired)", metrics.compare_templates(df))
     failed = int(df["failed"].sum())
     if failed:
         console.print(f"[yellow]{failed} run(s) ended in an error and are excluded.[/yellow]")
@@ -92,6 +94,23 @@ def _print_frame(title: str, frame: "pd.DataFrame") -> None:
     for record in frame.itertuples(index=False):
         table.add_row(*(str(v) for v in record))
     console.print(table)
+
+
+@app.command()
+def plot(
+    results: Annotated[Path, typer.Argument(help="Path to a results JSONL file.")],
+    out_dir: Annotated[Path, typer.Option(help="Where to write figures and tables.")] = Path(
+        "figures"
+    ),
+) -> None:
+    """Write the report's figures (PNG) and tables (Markdown) for a results file."""
+    from injectlab.analysis.plots import write_report_assets
+
+    if not results.exists():
+        console.print(f"[red]No such file: {results}[/red]")
+        raise typer.Exit(code=1)
+    for path in write_report_assets(results, out_dir):
+        console.print(f"wrote {path}")
 
 
 @app.command("show-trace")

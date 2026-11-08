@@ -80,7 +80,7 @@ class ExperimentConfig(BaseModel):
 
 
 def load_config(path: Path) -> ExperimentConfig:
-    return ExperimentConfig.model_validate(yaml.safe_load(path.read_text()))
+    return ExperimentConfig.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
 
 
 class RunSpec(BaseModel):

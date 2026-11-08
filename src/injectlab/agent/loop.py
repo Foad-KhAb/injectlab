@@ -56,11 +56,11 @@ class Trace(BaseModel):
 
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(self.model_dump_json(indent=2))
+        path.write_text(self.model_dump_json(indent=2), encoding="utf-8")
 
     @classmethod
     def load(cls, path: Path) -> "Trace":
-        return cls.model_validate_json(path.read_text())
+        return cls.model_validate_json(path.read_text(encoding="utf-8"))
 
 
 def run_agent(

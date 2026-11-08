@@ -153,3 +153,72 @@ def detector_summary(df: pd.DataFrame) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(records)
+
+
+def exact_mcnemar(only_a: int, only_b: int) -> float:
+    """Two-sided exact McNemar p-value from the discordant pair counts.
+
+    Pairs where both conditions agree carry no information, so only the two counts of
+    disagreeing pairs matter. Under "no difference" each disagreement is a fair coin flip.
+    """
+    n = only_a + only_b
+    if n == 0:
+        return 1.0
+    tail = sum(math.comb(n, i) for i in range(min(only_a, only_b) + 1)) / 2**n
+    return min(1.0, 2 * tail)
+
+
+def _paired(
+    left: pd.DataFrame, right: pd.DataFrame, on: list[str], column: str
+) -> dict[str, object]:
+    pairs = left[on + [column]].merge(right[on + [column]], on=on, suffixes=("_a", "_b"))
+    pairs = pairs.dropna(subset=[f"{column}_a", f"{column}_b"])
+    a = pairs[f"{column}_a"].astype(bool)
+    b = pairs[f"{column}_b"].astype(bool)
+    only_a, only_b = int((a & ~b).sum()), int((~a & b).sum())
+    return {
+        "a": Rate(int(a.sum()), len(pairs)),
+        "b": Rate(int(b.sum()), len(pairs)),
+        "only_a": only_a,
+        "only_b": only_b,
+        "p": round(exact_mcnemar(only_a, only_b), 4),
+    }
+
+
+def compare_defenses(df: pd.DataFrame, baseline: str = "none") -> pd.DataFrame:
+    """Each defense against the baseline on identical attacks (paired, exact McNemar)."""
+    attacked = df[df["is_attack"] & ~df["failed"]] if not df.empty else df
+    on = ["model", "user_task", "injection_task", "attack_template", "slot", "seed"]
+    records = []
+    for (model, defense), group in _group(attacked, ["model", "defense"]):
+        if defense == baseline:
+            continue
+        base = attacked[(attacked["model"] == model) & (attacked["defense"] == baseline)]
+        for metric, column in (
+            ("asr", "attack_success"),
+            ("utility_under_attack", "user_task_success"),
+        ):
+            if base.empty:
+                continue
+            records.append(
+                {"model": model, "defense": defense, "metric": metric}
+                | _paired(base, group, on, column)
+            )
+    return pd.DataFrame(records).rename(columns={"a": baseline, "b": "defense_rate"})
+
+
+def compare_templates(
+    df: pd.DataFrame, first: str = "ignore_previous", second: str = "persian"
+) -> pd.DataFrame:
+    """ASR of two templates on identical tasks, goals and slots (paired, exact McNemar)."""
+    attacked = df[df["is_attack"] & ~df["failed"]] if not df.empty else df
+    on = ["model", "defense", "user_task", "injection_task", "slot", "seed"]
+    records = []
+    for (model, defense), group in _group(attacked, ["model", "defense"]):
+        left = group[group["attack_template"] == first]
+        right = group[group["attack_template"] == second]
+        if not left.empty and not right.empty:
+            records.append(
+                {"model": model, "defense": defense} | _paired(left, right, on, "attack_success")
+            )
+    return pd.DataFrame(records).rename(columns={"a": first, "b": second})

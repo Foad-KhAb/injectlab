@@ -74,6 +74,7 @@ uv run python scripts/baseline_utility.py                          # all user ta
 uv run python scripts/attack_episode.py package_arrival forward_bank_code important_message
 uv run injectlab run configs/dev.yaml    # small end-to-end experiment; rerun to resume
 uv run injectlab analyze results/<run>.jsonl
+uv run injectlab plot results/<run>.jsonl --out-dir figures  # figures and tables for the report
 uv run injectlab show-trace results/<trace>.json
 ```
 
