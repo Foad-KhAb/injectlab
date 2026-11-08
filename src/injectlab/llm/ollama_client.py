@@ -8,6 +8,7 @@ import ollama
 from injectlab.llm.base import AssistantTurn, LLMError, Message, ToolCall, ToolSpec
 
 DEFAULT_HOST = "http://localhost:11434"
+DEFAULT_MODEL = "qwen2.5:7b-instruct"
 
 
 class OllamaClient:

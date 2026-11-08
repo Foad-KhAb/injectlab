@@ -6,7 +6,12 @@ import ollama
 import pytest
 
 from injectlab.llm.base import LLMError, Message, ToolCall, ToolSpec
-from injectlab.llm.ollama_client import OllamaClient, parse_arguments, to_ollama_message
+from injectlab.llm.ollama_client import (
+    DEFAULT_MODEL,
+    OllamaClient,
+    parse_arguments,
+    to_ollama_message,
+)
 
 GET_TIME = ToolSpec(name="get_time", description="Current time.")
 
@@ -153,9 +158,9 @@ def _ollama_ready(model: str) -> bool:
 
 
 @pytest.mark.ollama
-@pytest.mark.skipif(not _ollama_ready("qwen2.5:3b-instruct"), reason="Ollama/model not available")
+@pytest.mark.skipif(not _ollama_ready(DEFAULT_MODEL), reason="Ollama/model not available")
 def test_real_model_calls_a_tool() -> None:
-    client = OllamaClient("qwen2.5:3b-instruct")
+    client = OllamaClient(DEFAULT_MODEL)
     turn = client.chat(
         [Message.user("What time is it? Use the get_time tool.")],
         [GET_TIME],

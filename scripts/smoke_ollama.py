@@ -9,7 +9,7 @@ import sys
 from rich.console import Console
 
 from injectlab.llm.base import LLMError, Message, ToolSpec
-from injectlab.llm.ollama_client import OllamaClient
+from injectlab.llm.ollama_client import DEFAULT_MODEL, OllamaClient
 
 FAKE_TIME = "2026-01-15T09:30:00+00:00"
 
@@ -26,7 +26,7 @@ GET_TIME = ToolSpec(
 )
 
 
-def main(model: str = "qwen2.5:3b-instruct") -> int:
+def main(model: str = DEFAULT_MODEL) -> int:
     console = Console()
     client = OllamaClient(model)
     messages = [

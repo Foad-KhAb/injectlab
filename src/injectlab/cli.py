@@ -35,9 +35,16 @@ def analyze(results: Annotated[Path, typer.Argument(help="Path to a results JSON
 @app.command("show-trace")
 def show_trace(
     trace: Annotated[Path, typer.Argument(help="Path to a saved trace JSON file.")],
+    full: Annotated[bool, typer.Option(help="Show the full system prompt.")] = False,
 ) -> None:
     """Pretty-print a saved agent trace."""
-    _not_implemented()
+    from injectlab.agent.loop import Trace
+    from injectlab.agent.render import render_trace
+
+    if not trace.exists():
+        console.print(f"[red]No such file: {trace}[/red]")
+        raise typer.Exit(code=1)
+    render_trace(Trace.load(trace), console, full=full)
 
 
 @app.command()

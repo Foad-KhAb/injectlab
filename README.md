@@ -55,17 +55,21 @@ Start the server (it isn't needed if the official installer set up the systemd s
 
 ```bash
 ollama serve &                     # leave running
-ollama pull qwen2.5:3b-instruct    # fast model for development
-ollama pull qwen2.5:7b-instruct    # main experiment models
+ollama pull qwen2.5:7b-instruct    # default model (experiments)
+ollama pull qwen2.5:3b-instruct    # optional: faster, but weak at multi-step tool use
 ollama pull llama3.1:8b
 ```
 
-On a CPU-only machine, stick to `qwen2.5:3b-instruct` for development runs.
+`qwen2.5:7b-instruct` is the default. On a CPU-only machine it takes a minute or more per task;
+pass `--model qwen2.5:3b-instruct` to the scripts for quicker (but less reliable) runs.
 
 ## Usage
 
 ```bash
 uv run injectlab --help
+uv run python scripts/run_episode.py "Summarize my unread emails."  # one real-model episode
+uv run python scripts/baseline_utility.py                          # all user tasks, no attack
+uv run python scripts/attack_episode.py package_arrival forward_bank_code important_message
 uv run injectlab run configs/dev.yaml
 uv run injectlab analyze results/<run>.jsonl
 uv run injectlab show-trace results/<trace>.json
