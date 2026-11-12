@@ -16,7 +16,7 @@ from typer.testing import CliRunner
 from injectlab import cli
 from injectlab.attacks.injection_tasks import get_injection_task
 from injectlab.env.seed import build_world
-from injectlab.eval import metrics
+from injectlab.eval import metrics, runner
 from injectlab.eval.config import ALL_SLOTS, ExperimentConfig, RunSpec, expand, load_config
 from injectlab.eval.runner import ResultRow, load_rows, run_experiment
 from injectlab.llm.base import AssistantTurn, LLMClient
@@ -404,3 +404,15 @@ def test_rows_written_before_the_counters_existed_still_load(tmp_path: Path) -> 
     assert load_rows(path)[0].num_predict is None
     assert load_rows(path)[0].response_policy is None
 
+
+def test_git_commit_falls_back_to_the_environment_without_git(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def no_git(*args: object, **kwargs: object) -> None:
+        raise FileNotFoundError("git")
+
+    monkeypatch.setattr(runner.subprocess, "run", no_git)
+    monkeypatch.delenv("INJECTLAB_COMMIT", raising=False)
+    assert runner.git_commit() == "unknown"
+    monkeypatch.setenv("INJECTLAB_COMMIT", "abc1234")
+    assert runner.git_commit() == "abc1234"

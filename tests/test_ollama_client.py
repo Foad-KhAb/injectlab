@@ -33,7 +33,10 @@ class FakeOllama:
         self.num_calls += 1
         if self.error:
             raise self.error
-        return self.responses[min(self.num_calls, len(self.responses)) - 1]
+        response = self.responses[min(self.num_calls, len(self.responses)) - 1]
+        if kwargs.get("stream"):
+            return (chunk for chunk in [response])
+        return response
 
 
 def make_response(content: str = "", calls: list[tuple[str, Any]] | None = None) -> Any:
@@ -41,7 +44,9 @@ def make_response(content: str = "", calls: list[tuple[str, Any]] | None = None)
         SimpleNamespace(function=SimpleNamespace(name=name, arguments=args))
         for name, args in (calls or [])
     ]
-    return SimpleNamespace(message=SimpleNamespace(content=content, tool_calls=tool_calls or None))
+    return SimpleNamespace(
+        message=SimpleNamespace(content=content, tool_calls=tool_calls or None), done_reason="stop"
+    )
 
 
 def client_with(fake: FakeOllama, **kwargs: Any) -> OllamaClient:
@@ -79,6 +84,54 @@ def test_no_tools_sends_none() -> None:
     fake = FakeOllama(make_response("ok"))
     client_with(fake).chat([Message.user("u")], [])
     assert fake.kwargs["tools"] is None
+
+
+def test_output_limit_can_be_configured() -> None:
+    fake = FakeOllama(make_response("ok"))
+    client_with(fake).chat([], [])
+    assert fake.kwargs["options"]["num_predict"] == 512
+    client_with(fake, num_predict=256).chat([], [])
+    assert fake.kwargs["options"]["num_predict"] == 256
+
+
+@pytest.mark.parametrize("num_predict", [0, -1])
+def test_output_limit_must_be_positive(num_predict: int) -> None:
+    with pytest.raises(ValueError, match="positive"):
+        OllamaClient("test", num_predict=num_predict)
+
+
+@pytest.mark.parametrize("calls", [None, [("get_time", {})]])
+def test_truncated_response_is_rejected_even_with_a_parsed_tool_call(calls: Any) -> None:
+    response = make_response("partial", calls=calls)
+    response.done_reason = "length"
+    fake = FakeOllama(response)
+    with pytest.raises(LLMError, match="512-token output limit"):
+        client_with(fake).chat([], [GET_TIME])
+    assert fake.num_calls == 1
+
+
+def test_stream_returns_at_complete_tool_call_and_cancels_repeated_generation() -> None:
+    closed = []
+
+    def chunks():
+        try:
+            yield make_response(calls=[("get_time", {"timezone": "UTC"})])
+            raise AssertionError("generation continued after a complete tool call")
+        finally:
+            closed.append(True)
+
+    fake = FakeOllama()
+    fake.chat = lambda **kwargs: chunks()
+    turn = client_with(fake).chat([], [GET_TIME])
+    assert len(turn.tool_calls) == 1
+    assert turn.tool_calls[0].arguments == {"timezone": "UTC"}
+    assert closed == [True]
+
+
+def test_stream_accumulates_text_chunks() -> None:
+    fake = FakeOllama()
+    fake.chat = lambda **kwargs: (make_response(text) for text in ["It is ", "noon."])
+    assert client_with(fake).chat([], []).content == "It is noon."
 
 
 def test_empty_turn_is_retried() -> None:
