@@ -5,6 +5,7 @@ most the run in progress. On restart, runs that already have a row without an er
 skipped; runs that ended in an error (e.g. the Ollama server died) are tried again.
 """
 
+import os
 import subprocess
 import time
 import traceback
@@ -56,6 +57,8 @@ class ResultRow(BaseModel):
     num_tool_outputs: int = 0
     redacted_outputs: int = 0  # tool outputs a detector replaced
     blocked_calls: int = 0  # tool calls a defense refused
+    num_predict: int | None = None  # None for legacy rows with no recorded output limit
+    response_policy: str | None = None  # None for legacy non-streaming clients
 
 
 def git_commit() -> str:
@@ -71,7 +74,8 @@ def git_commit() -> str:
             check=True,
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
-        return "unknown"
+        # Machines without git can state the commit their copy of the code came from.
+        return os.environ.get("INJECTLAB_COMMIT", "unknown")
     return f"{sha}+dirty" if dirty else sha
 
 
@@ -131,7 +135,10 @@ def run_one(
         "seed": spec.seed,
     }
     try:
-        result = execute(spec, client_factory(spec.model, spec.seed), config.max_steps)
+        client = client_factory(spec.model, spec.seed)
+        common["num_predict"] = getattr(client, "num_predict", None)
+        common["response_policy"] = getattr(client, "response_policy", None)
+        result = execute(spec, client, config.max_steps)
     except Exception as exc:  # a bug or crash in one run must not end a long experiment
         return ResultRow(
             **common,

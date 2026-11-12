@@ -187,6 +187,24 @@ def test_runner_resumes_without_redoing_runs(tmp_path: Path) -> None:
     assert len(load_rows(config.results_path)) == 5
 
 
+def test_runner_records_output_limit_without_changing_completed_runs(tmp_path: Path) -> None:
+    config = small_config(tmp_path, user_tasks=["package_arrival"])
+    factory = factory_for(config)
+
+    def bounded(model: str, seed: int) -> LLMClient:
+        client = factory(model, seed)
+        client.num_predict = 512
+        client.response_policy = "first_complete_tool_call_v1"
+        return client
+
+    rows = run_experiment(config, client_factory=bounded)
+    assert all(r.num_predict == 512 for r in rows)
+    assert all(r.response_policy == "first_complete_tool_call_v1" for r in rows)
+    saved = config.results_path.read_bytes()
+    assert run_experiment(config, client_factory=factory_for(config)) == []
+    assert config.results_path.read_bytes() == saved
+
+
 def test_crashed_and_errored_runs_are_recorded_then_retried(tmp_path: Path) -> None:
     config = small_config(tmp_path, user_tasks=["package_arrival"])
 
@@ -378,6 +396,11 @@ def test_detector_summary_reports_false_positives_and_flagged_attacks() -> None:
 def test_rows_written_before_the_counters_existed_still_load(tmp_path: Path) -> None:
     data = row().model_dump()
     del data["redacted_outputs"], data["blocked_calls"], data["num_tool_outputs"]
+    del data["num_predict"]
+    del data["response_policy"]
     path = tmp_path / "old.jsonl"
     path.write_text(json.dumps(data) + "\n")
     assert load_rows(path)[0].redacted_outputs == 0
+    assert load_rows(path)[0].num_predict is None
+    assert load_rows(path)[0].response_policy is None
+

@@ -80,6 +80,16 @@ uv run injectlab show-trace results/<trace>.json
 
 ## Development
 
+The client streams responses and ends generation once Ollama returns a complete tool call,
+so the agent can execute it instead of waiting while the model repeats it. Model responses
+are limited to 512 output tokens per request. Responses that reach this
+limit are recorded as errors rather than scored as completed answers or tool calls.
+Resume with the same experiment command to retry errored episodes and skip completed ones.
+New result rows record `num_predict` and `response_policy`; older rows without them load as
+`null`. When resuming
+results collected before this limit was added, document that the run used mixed generation
+settings; completed results are preserved rather than rerun.
+
 ```bash
 uv run pytest                  # all tests
 uv run pytest -m "not ollama"  # skip tests that need a running Ollama server

@@ -40,9 +40,15 @@ def run(config: Annotated[Path, typer.Argument(help="Path to an experiment YAML 
         label = spec.user_task
         if spec.is_attack:
             label += f" x {spec.injection_task} x {spec.template} @ {spec.slot}"
-        user = {True: "[green]ok[/green]", False: "[red]fail[/red]"}.get(row.user_task_success, "-")
+        user = (
+            "-"
+            if row.error
+            else {True: "[green]ok[/green]", False: "[red]fail[/red]"}.get(
+                row.user_task_success, "-"
+            )
+        )
         parts = [f"[{i}/{n}] {spec.model} {spec.defense} {label}: user {user}"]
-        if spec.is_attack:
+        if spec.is_attack and not row.error:
             parts.append("attack " + ("[red]SUCCEEDED[/red]" if row.attack_success else "resisted"))
         if row.error:
             parts.append(f"[red]{row.stop_reason}: {row.error.splitlines()[0]}[/red]")

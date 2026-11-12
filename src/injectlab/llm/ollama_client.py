@@ -9,6 +9,7 @@ from injectlab.llm.base import AssistantTurn, LLMError, Message, ToolCall, ToolS
 
 DEFAULT_HOST = "http://localhost:11434"
 DEFAULT_MODEL = "qwen2.5:7b-instruct"
+DEFAULT_NUM_PREDICT = 512
 
 
 class OllamaClient:
@@ -24,6 +25,7 @@ class OllamaClient:
         temperature: float = 0.0,
         seed: int = 0,
         num_ctx: int = 8192,
+        num_predict: int = DEFAULT_NUM_PREDICT,
         host: str = DEFAULT_HOST,
         timeout: float = 300.0,
         empty_retries: int = 2,
@@ -32,6 +34,10 @@ class OllamaClient:
         self.temperature = temperature
         self.seed = seed
         self.num_ctx = num_ctx
+        if num_predict <= 0:
+            raise ValueError("num_predict must be positive")
+        self.num_predict = num_predict
+        self.response_policy = "first_complete_tool_call_v1"
         self.host = host
         self.max_empty_retries = empty_retries
         self.empty_retries_used = 0
@@ -54,16 +60,37 @@ class OllamaClient:
 
     def _chat_once(self, messages: list[Message], tools: list[ToolSpec]) -> AssistantTurn:
         try:
-            response = self._client.chat(
+            stream = self._client.chat(
                 model=self.model,
                 messages=[to_ollama_message(m) for m in messages],
                 tools=[t.to_json_schema() for t in tools] or None,
+                stream=True,
                 options={
                     "temperature": self.temperature,
                     "seed": self.seed,
                     "num_ctx": self.num_ctx,
+                    "num_predict": self.num_predict,
                 },
             )
+            content: list[str] = []
+            raw_calls = []
+            try:
+                for chunk in stream:
+                    if chunk.done_reason == "length":
+                        raise LLMError(
+                            f"Model response reached the {self.num_predict}-token output limit; "
+                            "the incomplete response was discarded. This episode can be retried."
+                        )
+                    content.append(chunk.message.content or "")
+                    if chunk.message.tool_calls:
+                        # The prompt asks for one tool at a time. Ollama streams parsed,
+                        # complete calls, so hand control back instead of letting the model
+                        # repeat the call until the HTTP timeout. Preserve a group of calls
+                        # delivered together, and cancel the remaining generation.
+                        raw_calls = chunk.message.tool_calls
+                        break
+            finally:
+                stream.close()
         except ConnectionError as exc:
             raise LLMError(
                 f"Cannot reach Ollama at {self.host}. Is it running? Start it with `ollama serve`."
@@ -76,7 +103,6 @@ class OllamaClient:
                 ) from exc
             raise LLMError(f"Ollama error ({exc.status_code}): {exc.error}") from exc
 
-        msg = response.message
         # Ollama does not return call ids, so derive stable ones from the conversation position.
         tool_calls = [
             ToolCall(
@@ -84,9 +110,9 @@ class OllamaClient:
                 name=tc.function.name,
                 arguments=parse_arguments(tc.function.arguments),
             )
-            for i, tc in enumerate(msg.tool_calls or [])
+            for i, tc in enumerate(raw_calls)
         ]
-        return AssistantTurn(content=msg.content or "", tool_calls=tool_calls)
+        return AssistantTurn(content="".join(content), tool_calls=tool_calls)
 
 
 def to_ollama_message(message: Message) -> dict[str, Any]:
