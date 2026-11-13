@@ -1,0 +1,171 @@
+{
+  "results_path": "results/full.jsonl",
+  "results_sha256": "0259c5ced5dd12524e10104411bd69ade30615131969c99563304be724c34ec7",
+  "raw_rows": 1527,
+  "unique_episodes": 1290,
+  "raw_errors": 236,
+  "unresolved_errors": 0,
+  "extra_success_rows": 1,
+  "recorded_commits": {
+    "7423876+dirty": 1527
+  },
+  "first_timestamp": "2026-11-12T00:01:17",
+  "last_timestamp": "2026-11-13T17:04:56",
+  "errors": {
+    "Cannot reach Ollama at http://localhost:11434. Is it running? Start it with `ollama serve`.": 224,
+    "ReadTimeout: timed out": 12
+  },
+  "policy_counts": [
+    {
+      "defense": "delimiting",
+      "legacy": 256,
+      "streaming": 2
+    },
+    {
+      "defense": "detector",
+      "legacy": 0,
+      "streaming": 258
+    },
+    {
+      "defense": "none",
+      "legacy": 258,
+      "streaming": 0
+    },
+    {
+      "defense": "sandwich",
+      "legacy": 104,
+      "streaming": 154
+    },
+    {
+      "defense": "tool_filter",
+      "legacy": 0,
+      "streaming": 258
+    }
+  ],
+  "outcomes": [
+    {
+      "defense": "delimiting",
+      "benign_success": 7,
+      "benign_n": 8,
+      "attacked_success": 143,
+      "attack_success": 64,
+      "attacked_n": 250,
+      "both_success": 25
+    },
+    {
+      "defense": "detector",
+      "benign_success": 5,
+      "benign_n": 8,
+      "attacked_success": 49,
+      "attack_success": 6,
+      "attacked_n": 250,
+      "both_success": 2
+    },
+    {
+      "defense": "none",
+      "benign_success": 7,
+      "benign_n": 8,
+      "attacked_success": 144,
+      "attack_success": 73,
+      "attacked_n": 250,
+      "both_success": 26
+    },
+    {
+      "defense": "sandwich",
+      "benign_success": 8,
+      "benign_n": 8,
+      "attacked_success": 223,
+      "attack_success": 23,
+      "attacked_n": 250,
+      "both_success": 17
+    },
+    {
+      "defense": "tool_filter",
+      "benign_success": 7,
+      "benign_n": 8,
+      "attacked_success": 145,
+      "attack_success": 38,
+      "attacked_n": 250,
+      "both_success": 21
+    }
+  ],
+  "defense_comparisons": [
+    {
+      "defense": "delimiting",
+      "metric": "asr",
+      "only_baseline": 22,
+      "only_defense": 13,
+      "p": 0.17546524899080396
+    },
+    {
+      "defense": "delimiting",
+      "metric": "utility_under_attack",
+      "only_baseline": 23,
+      "only_defense": 22,
+      "p": 1.0
+    },
+    {
+      "defense": "detector",
+      "metric": "asr",
+      "only_baseline": 69,
+      "only_defense": 2,
+      "p": 2.165863246129246e-18
+    },
+    {
+      "defense": "detector",
+      "metric": "utility_under_attack",
+      "only_baseline": 107,
+      "only_defense": 12,
+      "p": 3.2078083504135384e-20
+    },
+    {
+      "defense": "sandwich",
+      "metric": "asr",
+      "only_baseline": 52,
+      "only_defense": 2,
+      "p": 1.6497914145929826e-13
+    },
+    {
+      "defense": "sandwich",
+      "metric": "utility_under_attack",
+      "only_baseline": 2,
+      "only_defense": 81,
+      "p": 7.210946989931019e-22
+    },
+    {
+      "defense": "tool_filter",
+      "metric": "asr",
+      "only_baseline": 36,
+      "only_defense": 1,
+      "p": 5.529727786779404e-10
+    },
+    {
+      "defense": "tool_filter",
+      "metric": "utility_under_attack",
+      "only_baseline": 7,
+      "only_defense": 8,
+      "p": 1.0
+    }
+  ],
+  "legacy_policy_subsets": [
+    {
+      "defense": "delimiting",
+      "n": 248,
+      "baseline_asr_k": 71,
+      "defense_asr_k": 63,
+      "baseline_utility_k": 144,
+      "defense_utility_k": 143
+    },
+    {
+      "defense": "sandwich",
+      "n": 100,
+      "baseline_asr_k": 28,
+      "defense_asr_k": 10,
+      "baseline_utility_k": 74,
+      "defense_utility_k": 92
+    }
+  ],
+  "detector_benign_redactions": 9,
+  "detector_benign_outputs": 25,
+  "detector_attacked_flagged": 232
+}
