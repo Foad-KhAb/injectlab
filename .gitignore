@@ -1,6 +1,12 @@
-# Experiment outputs
+# Experiment outputs: retain the final dataset and reproducibility traces.
 results/*
 !results/.gitkeep
+!results/full.jsonl
+!results/full/
+results/full/*
+!results/full/traces/
+results/full/traces/*
+!results/full/traces/*.json
 
 # Python
 __pycache__/
